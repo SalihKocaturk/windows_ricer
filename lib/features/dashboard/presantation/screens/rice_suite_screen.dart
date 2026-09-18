@@ -11,29 +11,53 @@ class RiceSuiteScreen extends StatefulWidget {
 class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
   static const platform = MethodChannel('winricer/window_manager');
 
-  bool _isThemeActive = false;
-  double _radius = 18.0;
-  double _margin = 90.0;
+  bool _isActive = false;
+  int _glassType = 1; // 0: Şeffaf, 1: Buzlu Cam (Acrylic), 2: Bulanık (Blur)
+  double _opacity = 0.35;
+  bool _isIsland = true;
+  double _radius = 16.0;
+  double _margin = 40.0;
+  double _bottomMargin = 4.0;
 
-  void _syncTaskbar({bool? active, double? radius, double? margin}) async {
-    final newActive = active ?? _isThemeActive;
-    final newRadius = radius ?? _radius;
-    final newMargin = margin ?? _margin;
+  void _sync({
+    bool? active,
+    int? glass,
+    double? op,
+    bool? island,
+    double? rad,
+    double? mar,
+    double? bot,
+  }) async {
+    final nActive = active ?? _isActive;
+    final nGlass = glass ?? _glassType;
+    final nOp = op ?? _opacity;
+    final nIsland = island ?? _isIsland;
+    final nRad = rad ?? _radius;
+    final nMar = mar ?? _margin;
+    final nBot = bot ?? _bottomMargin;
 
     setState(() {
-      _isThemeActive = newActive;
-      _radius = newRadius;
-      _margin = newMargin;
+      _isActive = nActive;
+      _glassType = nGlass;
+      _opacity = nOp;
+      _isIsland = nIsland;
+      _radius = nRad;
+      _margin = nMar;
+      _bottomMargin = nBot;
     });
 
     try {
-      await platform.invokeMethod('updateRoundedTaskbar', {
-        'isActive': newActive,
-        'radius': newRadius,
-        'margin': newMargin,
+      await platform.invokeMethod('updateTaskbarStyle', {
+        'isActive': nActive,
+        'glassType': nGlass,
+        'opacity': nOp,
+        'isIsland': nIsland,
+        'radius': nRad,
+        'margin': nMar,
+        'bottomMargin': nBot,
       });
     } catch (e) {
-      print("Görev çubuğu güncellenemedi: $e");
+      print("Stil hatası: $e");
     }
   }
 
@@ -59,19 +83,18 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
         ),
         child: Column(
           children: [
-            // 1. Üst Başlık Barı
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: Row(
                 children: [
                   const Icon(
-                    Icons.rounded_corner_rounded,
+                    Icons.blur_linear_rounded,
                     color: Color(0xFF1DE9B6),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    "WinRicer — RoundedTB Ada Görev Çubuğu",
+                    "WinRicer — Görev Çubuğu Cam & Ada Stüdyosu",
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -96,18 +119,17 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
             ),
             const Divider(color: Colors.white10, height: 1),
 
-            // 2. Ana Dashboard Alanı (Taşma Hatası Kesinlikle Yok)
             Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
-                  vertical: 16,
+                  vertical: 14,
                 ),
                 child: Row(
                   children: [
-                    // Sol Taraf: Büyük Güç Butonu
+                    // Sol: Güç Butonu
                     Expanded(
-                      flex: 5,
+                      flex: 4,
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
@@ -119,26 +141,25 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             GestureDetector(
-                              onTap: () =>
-                                  _syncTaskbar(active: !_isThemeActive),
+                              onTap: () => _sync(active: !_isActive),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
-                                width: 110,
-                                height: 110,
+                                width: 105,
+                                height: 105,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
-                                  color: _isThemeActive
+                                  color: _isActive
                                       ? const Color(
                                           0xFF1DE9B6,
                                         ).withValues(alpha: 0.18)
                                       : Colors.white.withValues(alpha: 0.04),
                                   border: Border.all(
-                                    color: _isThemeActive
+                                    color: _isActive
                                         ? const Color(0xFF1DE9B6)
                                         : Colors.white24,
                                     width: 3,
                                   ),
-                                  boxShadow: _isThemeActive
+                                  boxShadow: _isActive
                                       ? [
                                           BoxShadow(
                                             color: const Color(
@@ -152,8 +173,8 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                 ),
                                 child: Icon(
                                   Icons.power_settings_new_rounded,
-                                  size: 56,
-                                  color: _isThemeActive
+                                  size: 54,
+                                  color: _isActive
                                       ? const Color(0xFF1DE9B6)
                                       : Colors.white30,
                                 ),
@@ -161,23 +182,22 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              _isThemeActive
-                                  ? "ADA GÖREV ÇUBUĞU: AKTİF"
-                                  : "ADA GÖREV ÇUBUĞU: KAPALI",
+                              _isActive
+                                  ? "CAM EFEKTİ: AKTİF"
+                                  : "CAM EFEKTİ: KAPALI",
                               style: TextStyle(
-                                color: _isThemeActive
+                                color: _isActive
                                     ? const Color(0xFF1DE9B6)
                                     : Colors.white54,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 12,
-                                letterSpacing: 0.8,
                               ),
                             ),
                             const SizedBox(height: 6),
                             Text(
-                              _isThemeActive
-                                  ? "Görev çubuğu kenarlardan kesilip ortalandı."
-                                  : "Windows tam ekran görev çubuğu devrede.",
+                              _isActive
+                                  ? "Buzlu cam dokusu görev çubuğuna uygulandı."
+                                  : "Windows mat görev çubuğu devrede.",
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white38,
@@ -188,15 +208,15 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 20),
+                    const SizedBox(width: 18),
 
-                    // Sağ Taraf: Ayarlar (SingleChildScrollView ile sarıldı)
+                    // Sağ: Ayarlar
                     Expanded(
-                      flex: 6,
+                      flex: 7,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
-                          vertical: 16,
+                          vertical: 14,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF122022),
@@ -208,7 +228,7 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Text(
-                                "ADA ŞEKLİ & GEOMETRİ AYARLARI",
+                                "CAM EFEKTİ TÜRÜ",
                                 style: TextStyle(
                                   color: Color(0xFF1DE9B6),
                                   fontSize: 11,
@@ -216,22 +236,53 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                   letterSpacing: 1,
                                 ),
                               ),
-                              const SizedBox(height: 16),
+                              const SizedBox(height: 10),
 
-                              // Radius
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: _GlassCard(
+                                      title: "Buzlu Cam",
+                                      sub: "Acrylic",
+                                      isSelected: _glassType == 1,
+                                      onTap: () => _sync(glass: 1),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _GlassCard(
+                                      title: "Şeffaf",
+                                      sub: "Clear",
+                                      isSelected: _glassType == 0,
+                                      onTap: () => _sync(glass: 0),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: _GlassCard(
+                                      title: "Bulanık",
+                                      sub: "Blur",
+                                      isSelected: _glassType == 2,
+                                      onTap: () => _sync(glass: 2),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+
                               Row(
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
                                   const Text(
-                                    "Köşe Kavisi (Radius):",
+                                    "Cam Opaklığı (Koyuluk):",
                                     style: TextStyle(
                                       color: Colors.white70,
                                       fontSize: 12,
                                     ),
                                   ),
                                   Text(
-                                    "${_radius.toInt()} px",
+                                    "%${(_opacity * 100).toInt()}",
                                     style: const TextStyle(
                                       color: Color(0xFF1DE9B6),
                                       fontWeight: FontWeight.bold,
@@ -240,70 +291,93 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                 ],
                               ),
                               Slider(
-                                value: _radius,
-                                min: 4,
-                                max: 28,
+                                value: _opacity,
+                                min: 0.0,
+                                max: 0.8,
                                 activeColor: const Color(0xFF1DE9B6),
-                                onChanged: (val) => _syncTaskbar(radius: val),
+                                onChanged: (v) => _sync(op: v),
                               ),
-                              const SizedBox(height: 10),
 
-                              // Margin
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    "Kenar Boşluğu (Margin):",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                dense: true,
+                                title: const Text(
+                                  "Kavisli Ada Şekli (Rounded Island)",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
                                   ),
-                                  Text(
-                                    "${_margin.toInt()} px",
-                                    style: const TextStyle(
-                                      color: Color(0xFF1DE9B6),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Slider(
-                                value: _margin,
-                                min: 20,
-                                max: 300,
-                                activeColor: const Color(0xFF1DE9B6),
-                                onChanged: (val) => _syncTaskbar(margin: val),
-                              ),
-                              const SizedBox(height: 10),
-
-                              Container(
-                                padding: const EdgeInsets.all(10),
-                                decoration: BoxDecoration(
-                                  color: Colors.black26,
-                                  borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: const Row(
+                                subtitle: const Text(
+                                  "Kapalıyken tam ekran şeffaf cam olur.",
+                                  style: TextStyle(
+                                    color: Colors.white38,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                                value: _isIsland,
+                                activeThumbColor: const Color(0xFF1DE9B6),
+                                onChanged: (v) => _sync(island: v),
+                              ),
+
+                              if (_isIsland) ...[
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Icon(
-                                      Icons.tips_and_updates_rounded,
-                                      color: Color(0xFF1DE9B6),
-                                      size: 15,
+                                    const Text(
+                                      "Köşe Kavisi:",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
                                     ),
-                                    SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        "Slider'ı kaydırdığında görev çubuğu anlık olarak daralır ve yuvarlanır.",
-                                        style: TextStyle(
-                                          color: Colors.white54,
-                                          fontSize: 11,
-                                        ),
+                                    Text(
+                                      "${_radius.toInt()} px",
+                                      style: const TextStyle(
+                                        color: Color(0xFF1DE9B6),
+                                        fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ],
                                 ),
-                              ),
+                                Slider(
+                                  value: _radius,
+                                  min: 4,
+                                  max: 24,
+                                  activeColor: const Color(0xFF1DE9B6),
+                                  onChanged: (v) => _sync(rad: v),
+                                ),
+
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    const Text(
+                                      "Kenar Boşluğu (Margin):",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                    Text(
+                                      "${_margin.toInt()} px",
+                                      style: const TextStyle(
+                                        color: Color(0xFF1DE9B6),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Slider(
+                                  value: _margin,
+                                  min: 0,
+                                  max: 120,
+                                  activeColor: const Color(0xFF1DE9B6),
+                                  onChanged: (v) => _sync(mar: v),
+                                ),
+                              ],
                             ],
                           ),
                         ),
@@ -312,6 +386,57 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                   ],
                 ),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GlassCard extends StatelessWidget {
+  final String title;
+  final String sub;
+  final bool isSelected;
+  final VoidCallback onTap;
+  const _GlassCard({
+    required this.title,
+    required this.sub,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 140),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF1DE9B6).withValues(alpha: 0.2)
+              : Colors.black26,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? const Color(0xFF1DE9B6) : Colors.white12,
+            width: 1.2,
+          ),
+        ),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: isSelected ? const Color(0xFF1DE9B6) : Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              sub,
+              style: const TextStyle(color: Colors.white38, fontSize: 9),
             ),
           ],
         ),
