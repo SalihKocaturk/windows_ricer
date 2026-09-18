@@ -59,17 +59,17 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
         ),
         child: Column(
           children: [
-            // 1. Üst Bar ve Pencere Kontrolleri
+            // 1. Üst Başlık Barı
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: Row(
                 children: [
                   const Icon(
                     Icons.rounded_corner_rounded,
                     color: Color(0xFF1DE9B6),
-                    size: 22,
+                    size: 20,
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   const Text(
                     "WinRicer — RoundedTB Ada Görev Çubuğu",
                     style: TextStyle(
@@ -96,20 +96,23 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
             ),
             const Divider(color: Colors.white10, height: 1),
 
-            // 2. Ana Dashboard Alanı
+            // 2. Ana Dashboard Alanı (Taşma Hatası Kesinlikle Yok)
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Row(
                   children: [
                     // Sol Taraf: Büyük Güç Butonu
                     Expanded(
                       flex: 5,
                       child: Container(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
                           color: const Color(0xFF122022),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white10),
                         ),
                         child: Column(
@@ -119,9 +122,9 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                               onTap: () =>
                                   _syncTaskbar(active: !_isThemeActive),
                               child: AnimatedContainer(
-                                duration: const Duration(milliseconds: 220),
-                                width: 125,
-                                height: 125,
+                                duration: const Duration(milliseconds: 200),
+                                width: 110,
+                                height: 110,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _isThemeActive
@@ -133,7 +136,7 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                     color: _isThemeActive
                                         ? const Color(0xFF1DE9B6)
                                         : Colors.white24,
-                                    width: 3.2,
+                                    width: 3,
                                   ),
                                   boxShadow: _isThemeActive
                                       ? [
@@ -141,7 +144,7 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                             color: const Color(
                                               0xFF1DE9B6,
                                             ).withValues(alpha: 0.4),
-                                            blurRadius: 30,
+                                            blurRadius: 28,
                                             spreadRadius: 3,
                                           ),
                                         ]
@@ -149,14 +152,14 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                 ),
                                 child: Icon(
                                   Icons.power_settings_new_rounded,
-                                  size: 64,
+                                  size: 56,
                                   color: _isThemeActive
                                       ? const Color(0xFF1DE9B6)
                                       : Colors.white30,
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
                             Text(
                               _isThemeActive
                                   ? "ADA GÖREV ÇUBUĞU: AKTİF"
@@ -166,15 +169,15 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                     ? const Color(0xFF1DE9B6)
                                     : Colors.white54,
                                 fontWeight: FontWeight.bold,
-                                fontSize: 13,
+                                fontSize: 12,
                                 letterSpacing: 0.8,
                               ),
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 6),
                             Text(
                               _isThemeActive
-                                  ? "Windows görev çubuğu kenarlardan kesilerek yüzen kavisli bir adaya dönüştürüldü."
-                                  : "Windows orijinal tam ekran görev çubuğu devrede.",
+                                  ? "Görev çubuğu kenarlardan kesilip ortalandı."
+                                  : "Windows tam ekran görev çubuğu devrede.",
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white38,
@@ -185,118 +188,124 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 24),
+                    const SizedBox(width: 20),
 
-                    // Sağ Taraf: Kavis ve Ada Boyut Ayarları
+                    // Sağ Taraf: Ayarlar (SingleChildScrollView ile sarıldı)
                     Expanded(
                       flex: 6,
                       child: Container(
-                        padding: const EdgeInsets.all(24),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 16,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF122022),
-                          borderRadius: BorderRadius.circular(18),
+                          borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white10),
                         ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Text(
-                              "ADA ŞEKLİ & GEOMETRİ AYARLARI",
-                              style: TextStyle(
-                                color: Color(0xFF1DE9B6),
-                                fontSize: 11,
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 1.2,
+                        child: SingleChildScrollView(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                "ADA ŞEKLİ & GEOMETRİ AYARLARI",
+                                style: TextStyle(
+                                  color: Color(0xFF1DE9B6),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1,
+                                ),
                               ),
-                            ),
-                            const SizedBox(height: 24),
+                              const SizedBox(height: 16),
 
-                            // Radius Slider
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  "Köşe Kavisi (Radius):",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Text(
-                                  "${_radius.toInt()} px",
-                                  style: const TextStyle(
-                                    color: Color(0xFF1DE9B6),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Slider(
-                              value: _radius,
-                              min: 4,
-                              max: 28,
-                              activeColor: const Color(0xFF1DE9B6),
-                              onChanged: (val) => _syncTaskbar(radius: val),
-                            ),
-                            const SizedBox(height: 16),
-
-                            // Margin Slider (Sağdan ve Soldan Kırpma)
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  "Kenar Boşluğu (Margin):",
-                                  style: TextStyle(
-                                    color: Colors.white70,
-                                    fontSize: 13,
-                                  ),
-                                ),
-                                Text(
-                                  "${_margin.toInt()} px",
-                                  style: const TextStyle(
-                                    color: Color(0xFF1DE9B6),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                            Slider(
-                              value: _margin,
-                              min: 20,
-                              max: 300,
-                              activeColor: const Color(0xFF1DE9B6),
-                              onChanged: (val) => _syncTaskbar(margin: val),
-                            ),
-                            const SizedBox(height: 16),
-
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.black26,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: const Row(
+                              // Radius
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Icon(
-                                    Icons.tips_and_updates_rounded,
-                                    color: Color(0xFF1DE9B6),
-                                    size: 16,
+                                  const Text(
+                                    "Köşe Kavisi (Radius):",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
                                   ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      "Slider'ları hareket ettirdiğinde Windows görev çubuğu anlık olarak daralıp yuvarlanır.",
-                                      style: TextStyle(
-                                        color: Colors.white54,
-                                        fontSize: 11,
-                                      ),
+                                  Text(
+                                    "${_radius.toInt()} px",
+                                    style: const TextStyle(
+                                      color: Color(0xFF1DE9B6),
+                                      fontWeight: FontWeight.bold,
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          ],
+                              Slider(
+                                value: _radius,
+                                min: 4,
+                                max: 28,
+                                activeColor: const Color(0xFF1DE9B6),
+                                onChanged: (val) => _syncTaskbar(radius: val),
+                              ),
+                              const SizedBox(height: 10),
+
+                              // Margin
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text(
+                                    "Kenar Boşluğu (Margin):",
+                                    style: TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  Text(
+                                    "${_margin.toInt()} px",
+                                    style: const TextStyle(
+                                      color: Color(0xFF1DE9B6),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Slider(
+                                value: _margin,
+                                min: 20,
+                                max: 300,
+                                activeColor: const Color(0xFF1DE9B6),
+                                onChanged: (val) => _syncTaskbar(margin: val),
+                              ),
+                              const SizedBox(height: 10),
+
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.black26,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.tips_and_updates_rounded,
+                                      color: Color(0xFF1DE9B6),
+                                      size: 15,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        "Slider'ı kaydırdığında görev çubuğu anlık olarak daralır ve yuvarlanır.",
+                                        style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -335,8 +344,8 @@ class _MacButtonState extends State<_MacButton> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: Container(
-          width: 13,
-          height: 13,
+          width: 12,
+          height: 12,
           decoration: BoxDecoration(
             color: widget.color,
             shape: BoxShape.circle,
