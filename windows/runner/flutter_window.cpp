@@ -14,14 +14,47 @@
 #pragma comment(lib, "gdi32.lib")
 #pragma comment(lib, "shell32.lib")
 
-// RoundedTB Motoru: Windows Görev Çubuğunu Canlı Olarak Kavisli Adaya Çevir
-void ApplyRoundedTaskbar(bool isActive, int radius, int marginX, int marginY)
+// Windows DWM Composition Struct (TranslucentTB Motoru)
+struct ACCENT_POLICY
+{
+  int AccentState;
+  int AccentFlags;
+  DWORD GradientColor;
+  int AnimationId;
+};
+
+struct WINDOWCOMPOSITIONATTRIBDATA
+{
+  int Attrib;
+  void *pvData;
+  int cbData;
+};
+
+typedef BOOL(WINAPI *pfnSetWindowCompositionAttribute)(HWND, WINDOWCOMPOSITIONATTRIBDATA *);
+static pfnSetWindowCompositionAttribute SetWindowCompositionAttribute = nullptr;
+
+void InitCompositionApi()
+{
+  HMODULE hUser = GetModuleHandleW(L"user32.dll");
+  if (hUser)
+  {
+    SetWindowCompositionAttribute = (pfnSetWindowCompositionAttribute)GetProcAddress(hUser, "SetWindowCompositionAttribute");
+  }
+}
+
+// Cam Efekti + Kavisli Ada Fonksiyonu
+void ApplyTaskbarStyling(bool isActive, int glassType, double opacity, bool isIsland, int radius, int marginX, int bottomMargin)
 {
   HWND hTaskbar = FindWindowW(L"Shell_TrayWnd", nullptr);
   if (!hTaskbar)
     return;
 
-  // 1. Önceki gizlemeleri iptal et, çubuğu kesinlikle ekranda görünür yap
+  if (!SetWindowCompositionAttribute)
+  {
+    InitCompositionApi();
+  }
+
+  // Görev çubuğunu görünür yap
   APPBARDATA abd = {sizeof(APPBARDATA), hTaskbar};
   abd.lParam = ABS_ALWAYSONTOP;
   SHAppBarMessage(ABM_SETSTATE, &abd);
@@ -29,29 +62,79 @@ void ApplyRoundedTaskbar(bool isActive, int radius, int marginX, int marginY)
 
   if (isActive)
   {
-    RECT rc;
-    GetWindowRect(hTaskbar, &rc);
-    int totalWidth = rc.right - rc.left;
-    int totalHeight = rc.bottom - rc.top;
-
-    int left = marginX;
-    int top = marginY;
-    int right = totalWidth - marginX;
-    int bottom = totalHeight - marginY;
-
-    if (right > left && bottom > top)
+    // 1. CAM EFEKTİ (DWM)
+    if (SetWindowCompositionAttribute)
     {
-      HRGN rgn = CreateRoundRectRgn(left, top, right, bottom, radius * 2, radius * 2);
-      SetWindowRgn(hTaskbar, rgn, TRUE);
+      ACCENT_POLICY policy = {0, 0, 0, 0};
+      DWORD alpha = (DWORD)(opacity * 255.0);
+      DWORD tintColor = (alpha << 24) | 0x00181A16; // Koyu zümrüt cam
+
+      if (glassType == 0)
+      {
+        // Kristal Şeffaf (Clear)
+        policy.AccentState = 2; // ACCENT_ENABLE_TRANSPARENTGRADIENT
+        policy.AccentFlags = 2;
+        policy.GradientColor = (alpha << 24);
+      }
+      else if (glassType == 1)
+      {
+        // Buzlu Cam (Acrylic)
+        policy.AccentState = 4; // ACCENT_ENABLE_ACRYLICBLURBEHIND
+        policy.AccentFlags = 2;
+        policy.GradientColor = tintColor;
+      }
+      else if (glassType == 2)
+      {
+        // Bulanık Cam (Blur)
+        policy.AccentState = 3; // ACCENT_ENABLE_BLURBEHIND
+        policy.AccentFlags = 2;
+        policy.GradientColor = tintColor;
+      }
+
+      WINDOWCOMPOSITIONATTRIBDATA data = {19, &policy, sizeof(policy)};
+      SetWindowCompositionAttribute(hTaskbar, &data);
+
+      HWND hSec = FindWindowW(L"Shell_SecondaryTrayWnd", nullptr);
+      if (hSec)
+        SetWindowCompositionAttribute(hSec, &data);
+    }
+
+    // 2. KAVİSLİ ADA ŞEKLİ
+    if (isIsland)
+    {
+      RECT rc;
+      GetWindowRect(hTaskbar, &rc);
+      int totalWidth = rc.right - rc.left;
+      int totalHeight = rc.bottom - rc.top;
+
+      int top = 2;
+      int bottom = totalHeight - bottomMargin;
+      int r = radius * 2;
+      int left = marginX;
+      int right = totalWidth - marginX;
+
+      if (right > left && bottom > top)
+      {
+        HRGN rgn = CreateRoundRectRgn(left, top, right, bottom, r, r);
+        SetWindowRgn(hTaskbar, rgn, TRUE);
+      }
+    }
+    else
+    {
+      SetWindowRgn(hTaskbar, NULL, TRUE); // Tam ekran cam
     }
   }
   else
   {
-    // Kapatıldığında orijinal dikdörtgen haline geri döndür
+    if (SetWindowCompositionAttribute)
+    {
+      ACCENT_POLICY policy = {0, 0, 0, 0};
+      WINDOWCOMPOSITIONATTRIBDATA data = {19, &policy, sizeof(policy)};
+      SetWindowCompositionAttribute(hTaskbar, &data);
+    }
     SetWindowRgn(hTaskbar, NULL, TRUE);
   }
 
-  // 2. Windows DWM motoruna çerçevenin değiştiğini bildir ve anında yeniden çizdir
   SetWindowPos(hTaskbar, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
   RedrawWindow(hTaskbar, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME);
 }
@@ -66,13 +149,11 @@ bool FlutterWindow::OnCreate()
 
   HWND hWnd = GetHandle();
 
-  // WinRicer'ın kendi penceresini frameless yap
   LONG_PTR style = GetWindowLongPtr(hWnd, GWL_STYLE);
   style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
   style |= WS_POPUP;
   SetWindowLongPtr(hWnd, GWL_STYLE, style);
 
-  // Pencereyi ekranın ortasında normal 940x620 Dashboard olarak aç
   int screenWidth = GetSystemMetrics(SM_CXSCREEN);
   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
   int winWidth = 940;
@@ -97,7 +178,7 @@ bool FlutterWindow::OnCreate()
   channel->SetMethodCallHandler([](const flutter::MethodCall<> &call, std::unique_ptr<flutter::MethodResult<>> result)
                                 {
     if (call.method_name() == "closeApp") {
-      ApplyRoundedTaskbar(false, 0, 0, 0); // Kapanırken görev çubuğunu orijinale döndür
+      ApplyTaskbarStyling(false, 0, 0.0, false, 0, 0, 0);
       PostMessage(FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr), WM_CLOSE, 0, 0);
       result->Success();
       return;
@@ -108,30 +189,47 @@ bool FlutterWindow::OnCreate()
       result->Success();
       return;
     }
-    if (call.method_name() == "updateRoundedTaskbar") {
+    if (call.method_name() == "updateTaskbarStyle") {
       const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
       if (args) {
         bool isActive = false;
-        int radius = 18;
-        int marginX = 90;
-        int marginY = 6;
+        int glassType = 1;
+        double opacity = 0.35;
+        bool isIsland = true;
+        int radius = 16;
+        int marginX = 40;
+        int bottomMargin = 4;
 
         auto active_it = args->find(flutter::EncodableValue("isActive"));
         if (active_it != args->end() && std::holds_alternative<bool>(active_it->second)) {
           isActive = std::get<bool>(active_it->second);
         }
-
+        auto glass_it = args->find(flutter::EncodableValue("glassType"));
+        if (glass_it != args->end() && std::holds_alternative<int>(glass_it->second)) {
+          glassType = std::get<int>(glass_it->second);
+        }
+        auto opacity_it = args->find(flutter::EncodableValue("opacity"));
+        if (opacity_it != args->end() && std::holds_alternative<double>(opacity_it->second)) {
+          opacity = std::get<double>(opacity_it->second);
+        }
+        auto island_it = args->find(flutter::EncodableValue("isIsland"));
+        if (island_it != args->end() && std::holds_alternative<bool>(island_it->second)) {
+          isIsland = std::get<bool>(island_it->second);
+        }
         auto radius_it = args->find(flutter::EncodableValue("radius"));
         if (radius_it != args->end() && std::holds_alternative<double>(radius_it->second)) {
           radius = (int)std::get<double>(radius_it->second);
         }
-
         auto margin_it = args->find(flutter::EncodableValue("margin"));
         if (margin_it != args->end() && std::holds_alternative<double>(margin_it->second)) {
           marginX = (int)std::get<double>(margin_it->second);
         }
+        auto bottom_it = args->find(flutter::EncodableValue("bottomMargin"));
+        if (bottom_it != args->end() && std::holds_alternative<double>(bottom_it->second)) {
+          bottomMargin = (int)std::get<double>(bottom_it->second);
+        }
 
-        ApplyRoundedTaskbar(isActive, radius, marginX, marginY);
+        ApplyTaskbarStyling(isActive, glassType, opacity, isIsland, radius, marginX, bottomMargin);
       }
       result->Success(flutter::EncodableValue(true));
       return;
@@ -147,7 +245,7 @@ bool FlutterWindow::OnCreate()
 
 void FlutterWindow::OnDestroy()
 {
-  ApplyRoundedTaskbar(false, 0, 0, 0); // Uygulama kapanırsa görev çubuğunu normale döndür
+  ApplyTaskbarStyling(false, 0, 0.0, false, 0, 0, 0);
   if (flutter_controller_)
     flutter_controller_ = nullptr;
   Win32Window::OnDestroy();
