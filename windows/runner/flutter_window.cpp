@@ -7,17 +7,25 @@
 #include <flutter/standard_method_codec.h>
 #include <windows.h>
 #include <dwmapi.h>
+#include <shellapi.h>
 
 #pragma comment(lib, "dwmapi.lib")
 #pragma comment(lib, "user32.lib")
 #pragma comment(lib, "gdi32.lib")
+#pragma comment(lib, "shell32.lib")
 
-// RoundedTB Mantığı: Windows Görev Çubuğunu Kavisli Adaya Dönüştür
+// RoundedTB Motoru: Windows Görev Çubuğunu Canlı Olarak Kavisli Adaya Çevir
 void ApplyRoundedTaskbar(bool isActive, int radius, int marginX, int marginY)
 {
   HWND hTaskbar = FindWindowW(L"Shell_TrayWnd", nullptr);
   if (!hTaskbar)
     return;
+
+  // 1. Önceki gizlemeleri iptal et, çubuğu kesinlikle ekranda görünür yap
+  APPBARDATA abd = {sizeof(APPBARDATA), hTaskbar};
+  abd.lParam = ABS_ALWAYSONTOP;
+  SHAppBarMessage(ABM_SETSTATE, &abd);
+  ShowWindow(hTaskbar, SW_SHOW);
 
   if (isActive)
   {
@@ -26,7 +34,6 @@ void ApplyRoundedTaskbar(bool isActive, int radius, int marginX, int marginY)
     int totalWidth = rc.right - rc.left;
     int totalHeight = rc.bottom - rc.top;
 
-    // Görev çubuğunun sağından, solundan ve altından pay bırakıp ortada kavisli bir ada yapıyoruz
     int left = marginX;
     int top = marginY;
     int right = totalWidth - marginX;
@@ -43,6 +50,10 @@ void ApplyRoundedTaskbar(bool isActive, int radius, int marginX, int marginY)
     // Kapatıldığında orijinal dikdörtgen haline geri döndür
     SetWindowRgn(hTaskbar, NULL, TRUE);
   }
+
+  // 2. Windows DWM motoruna çerçevenin değiştiğini bildir ve anında yeniden çizdir
+  SetWindowPos(hTaskbar, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+  RedrawWindow(hTaskbar, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME);
 }
 
 FlutterWindow::FlutterWindow(const flutter::DartProject &project) : project_(project) {}
@@ -61,7 +72,7 @@ bool FlutterWindow::OnCreate()
   style |= WS_POPUP;
   SetWindowLongPtr(hWnd, GWL_STYLE, style);
 
-  // Pencereyi ekranın ortasında ferah 940x620 Dashboard olarak aç
+  // Pencereyi ekranın ortasında normal 940x620 Dashboard olarak aç
   int screenWidth = GetSystemMetrics(SM_CXSCREEN);
   int screenHeight = GetSystemMetrics(SM_CYSCREEN);
   int winWidth = 940;
@@ -86,7 +97,7 @@ bool FlutterWindow::OnCreate()
   channel->SetMethodCallHandler([](const flutter::MethodCall<> &call, std::unique_ptr<flutter::MethodResult<>> result)
                                 {
     if (call.method_name() == "closeApp") {
-      ApplyRoundedTaskbar(false, 0, 0, 0); // Kapanırken görev çubuğunu düzelt
+      ApplyRoundedTaskbar(false, 0, 0, 0); // Kapanırken görev çubuğunu orijinale döndür
       PostMessage(FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr), WM_CLOSE, 0, 0);
       result->Success();
       return;
@@ -101,8 +112,8 @@ bool FlutterWindow::OnCreate()
       const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
       if (args) {
         bool isActive = false;
-        int radius = 16;
-        int marginX = 80;
+        int radius = 18;
+        int marginX = 90;
         int marginY = 6;
 
         auto active_it = args->find(flutter::EncodableValue("isActive"));
