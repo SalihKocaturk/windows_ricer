@@ -1,169 +1,108 @@
-#include "flutter_window.h"
-#include <optional>
-#include <vector>
-#include <string>
-#include "flutter/generated_plugin_registrant.h"
-#include <flutter/method_channel.h>
-#include <flutter/standard_method_codec.h>
-#include <windows.h>
-#include <dwmapi.h>
-#include <shellapi.h>
+# Project-level configuration.
+cmake_minimum_required(VERSION 3.14)
+project(windows_ricer LANGUAGES CXX)
 
-#pragma comment(lib, "dwmapi.lib")
-#pragma comment(lib, "user32.lib")
-#pragma comment(lib, "gdi32.lib")
-#pragma comment(lib, "shell32.lib")
-#pragma comment(lib, "advapi32.lib")
+# The name of the executable created for the application. Change this to change
+# the on-disk name of your application.
+set(BINARY_NAME "windows_ricer")
 
-// Arama Çubuğunu Butona Çevirme Fonksiyonu
-void SetSearchMode(bool iconOnly) {
-  HKEY hKey;
-  if (RegCreateKeyExW(HKEY_CURRENT_USER, L"Software\\Microsoft\\Windows\\CurrentVersion\\Search", 0, nullptr, 0, KEY_SET_VALUE, nullptr, &hKey, nullptr) == ERROR_SUCCESS) {
-    DWORD mode = iconOnly ? 1 : 2; // 1: Yalnızca Arama Butonu, 2: Uzun Arama Çubuğu
-    RegSetValueExW(hKey, L"SearchboxTaskbarMode", 0, REG_DWORD, (const BYTE*)&mode, sizeof(mode));
-    RegCloseKey(hKey);
-  }
-  // Explorer'a anında değişikliği bildir
-  SendMessageTimeoutW(HWND_BROADCAST, WM_SETTINGCHANGE, 0, (LPARAM)L"TraySettings", SMTO_ABORTIFHUNG, 200, nullptr);
-}
+# Explicitly opt in to modern CMake behaviors to avoid warnings with recent
+# versions of CMake.
+cmake_policy(VERSION 3.14...3.25)
 
-// Görev Çubuğunu Kavisli Adaya Çevirme Fonksiyonu (RoundedTB Mantığı)
-void ApplyTaskbarGeometry(bool isActive, int radius, int marginX, int bottomMargin) {
-  HWND hTaskbar = FindWindowW(L"Shell_TrayWnd", nullptr);
-  if (!hTaskbar) return;
+# Define build configuration option.
+get_property(IS_MULTICONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(IS_MULTICONFIG)
+  set(CMAKE_CONFIGURATION_TYPES "Debug;Profile;Release"
+    CACHE STRING "" FORCE)
+else()
+  if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE
+      STRING "Flutter build mode" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+      "Debug" "Profile" "Release")
+  endif()
+endif()
+# Define settings for the Profile build mode.
+set(CMAKE_EXE_LINKER_FLAGS_PROFILE "${CMAKE_EXE_LINKER_FLAGS_RELEASE}")
+set(CMAKE_SHARED_LINKER_FLAGS_PROFILE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE}")
+set(CMAKE_C_FLAGS_PROFILE "${CMAKE_C_FLAGS_RELEASE}")
+set(CMAKE_CXX_FLAGS_PROFILE "${CMAKE_CXX_FLAGS_RELEASE}")
 
-  // Çubuğun görünür olduğundan emin ol
-  APPBARDATA abd = { sizeof(APPBARDATA), hTaskbar };
-  abd.lParam = ABS_ALWAYSONTOP;
-  SHAppBarMessage(ABM_SETSTATE, &abd);
-  ShowWindow(hTaskbar, SW_SHOW);
+# Use Unicode for all projects.
+add_definitions(-DUNICODE -D_UNICODE)
 
-  if (isActive) {
-    RECT rc;
-    GetWindowRect(hTaskbar, &rc);
-    int totalWidth = rc.right - rc.left;
-    int totalHeight = rc.bottom - rc.top;
+# Compilation settings that should be applied to most targets.
+#
+# Be cautious about adding new options here, as plugins use this function by
+# default. In most cases, you should add new options to specific targets instead
+# of modifying this function.
+function(APPLY_STANDARD_SETTINGS TARGET)
+  target_compile_features(${TARGET} PUBLIC cxx_std_17)
+  target_compile_options(${TARGET} PRIVATE /W4 /WX /wd"4100")
+  target_compile_options(${TARGET} PRIVATE /EHsc)
+  target_compile_definitions(${TARGET} PRIVATE "_HAS_EXCEPTIONS=0")
+  target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
+endfunction()
 
-    int top = 0; // İkonlar sıkışmasın diye üstten pay sıfır
-    int bottom = totalHeight - bottomMargin;
-    int r = radius * 2;
+# Flutter library and tool build rules.
+set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
+add_subdirectory(${FLUTTER_MANAGED_DIR})
 
-    int left = marginX;
-    int right = totalWidth - marginX;
+# Application build; see runner/CMakeLists.txt.
+add_subdirectory("runner")
 
-    if (right > left && bottom > top) {
-      HRGN rgn = CreateRoundRectRgn(left, top, right, bottom, r, r);
-      SetWindowRgn(hTaskbar, rgn, TRUE);
-    }
-  } else {
-    // Kapatıldığında orijinal haline döndür
-    SetWindowRgn(hTaskbar, NULL, TRUE);
-  }
 
-  SetWindowPos(hTaskbar, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-  RedrawWindow(hTaskbar, NULL, NULL, RDW_INVALIDATE | RDW_UPDATENOW | RDW_ALLCHILDREN | RDW_FRAME);
-}
+# Generated plugin build rules, which manage building the plugins and adding
+# them to the application.
+include(flutter/generated_plugins.cmake)
 
-FlutterWindow::FlutterWindow(const flutter::DartProject &project) : project_(project) {}
-FlutterWindow::~FlutterWindow() {}
 
-bool FlutterWindow::OnCreate() {
-  if (!Win32Window::OnCreate()) return false;
+# === Installation ===
+# Support files are copied into place next to the executable, so that it can
+# run in place. This is done instead of making a separate bundle (as on Linux)
+# so that building and running from within Visual Studio will work.
+set(BUILD_BUNDLE_DIR "$<TARGET_FILE_DIR:${BINARY_NAME}>")
+# Make the "install" step default, as it's required to run.
+set(CMAKE_VS_INCLUDE_INSTALL_TO_DEFAULT_BUILD 1)
+if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+  set(CMAKE_INSTALL_PREFIX "${BUILD_BUNDLE_DIR}" CACHE PATH "..." FORCE)
+endif()
 
-  HWND hWnd = GetHandle();
+set(INSTALL_BUNDLE_DATA_DIR "${CMAKE_INSTALL_PREFIX}/data")
+set(INSTALL_BUNDLE_LIB_DIR "${CMAKE_INSTALL_PREFIX}")
 
-  LONG_PTR style = GetWindowLongPtr(hWnd, GWL_STYLE);
-  style &= ~(WS_CAPTION | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_SYSMENU);
-  style |= WS_POPUP;
-  SetWindowLongPtr(hWnd, GWL_STYLE, style);
+install(TARGETS ${BINARY_NAME} RUNTIME DESTINATION "${CMAKE_INSTALL_PREFIX}"
+  COMPONENT Runtime)
 
-  int sW = GetSystemMetrics(SM_CXSCREEN);
-  int sH = GetSystemMetrics(SM_CYSCREEN);
-  int winW = 940;
-  int winH = 620;
-  SetWindowPos(hWnd, nullptr, (sW - winW) / 2, (sH - winH) / 2, winW, winH, SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+install(FILES "${FLUTTER_ICU_DATA_FILE}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  COMPONENT Runtime)
 
-  DWM_WINDOW_CORNER_PREFERENCE pref = DWMWCP_ROUND;
-  DwmSetWindowAttribute(hWnd, DWMWA_WINDOW_CORNER_PREFERENCE, &pref, sizeof(pref));
+install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+  COMPONENT Runtime)
 
-  RECT frame = GetClientArea();
-  flutter_controller_ = std::make_unique<flutter::FlutterViewController>(frame.right - frame.left, frame.bottom - frame.top, project_);
-  if (!flutter_controller_->engine() || !flutter_controller_->view()) return false;
-  RegisterPlugins(flutter_controller_->engine());
+if(PLUGIN_BUNDLED_LIBRARIES)
+  install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"
+    DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+    COMPONENT Runtime)
+endif()
 
-  auto channel = std::make_unique<flutter::MethodChannel<>>(
-      flutter_controller_->engine()->messenger(), "winricer/window_manager", &flutter::StandardMethodCodec::GetInstance());
+# Copy the native assets provided by the build.dart from all packages.
+set(NATIVE_ASSETS_DIR "${PROJECT_BUILD_DIR}native_assets/windows/")
+install(DIRECTORY "${NATIVE_ASSETS_DIR}"
+   DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
+   COMPONENT Runtime)
 
-  channel->SetMethodCallHandler([](const flutter::MethodCall<> &call, std::unique_ptr<flutter::MethodResult<>> result) {
-    if (call.method_name() == "closeApp") {
-      ApplyTaskbarGeometry(false, 0, 0, 0);
-      PostMessage(FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr), WM_CLOSE, 0, 0);
-      result->Success();
-      return;
-    }
-    if (call.method_name() == "minimizeApp") {
-      HWND hApp = FindWindowW(L"FLUTTER_RUNNER_WIN32_WINDOW", nullptr);
-      if (hApp) ShowWindow(hApp, SW_MINIMIZE);
-      result->Success();
-      return;
-    }
-    if (call.method_name() == "setSearchButton") {
-      const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
-      if (args) {
-        auto it = args->find(flutter::EncodableValue("iconOnly"));
-        if (it != args->end() && std::holds_alternative<bool>(it->second)) {
-          SetSearchMode(std::get<bool>(it->second));
-        }
-      }
-      result->Success(flutter::EncodableValue(true));
-      return;
-    }
-    if (call.method_name() == "restartExplorer") {
-      system("taskkill /f /im explorer.exe & start explorer.exe");
-      result->Success(flutter::EncodableValue(true));
-      return;
-    }
-    if (call.method_name() == "updateTaskbarGeometry") {
-      const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
-      if (args) {
-        bool isActive = false;
-        int radius = 18;
-        int marginX = 60;
-        int bottomMargin = 4;
+# Fully re-copy the assets directory on each build to avoid having stale files
+# from a previous install.
+set(FLUTTER_ASSET_DIR_NAME "flutter_assets")
+install(CODE "
+  file(REMOVE_RECURSE \"${INSTALL_BUNDLE_DATA_DIR}/${FLUTTER_ASSET_DIR_NAME}\")
+  " COMPONENT Runtime)
+install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
+  DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
-        auto active_it = args->find(flutter::EncodableValue("isActive"));
-        if (active_it != args->end() && std::holds_alternative<bool>(active_it->second)) isActive = std::get<bool>(active_it->second);
-        auto r_it = args->find(flutter::EncodableValue("radius"));
-        if (r_it != args->end() && std::holds_alternative<double>(r_it->second)) radius = (int)std::get<double>(r_it->second);
-        auto m_it = args->find(flutter::EncodableValue("margin"));
-        if (m_it != args->end() && std::holds_alternative<double>(m_it->second)) marginX = (int)std::get<double>(m_it->second);
-        auto b_it = args->find(flutter::EncodableValue("bottomMargin"));
-        if (b_it != args->end() && std::holds_alternative<double>(b_it->second)) bottomMargin = (int)std::get<double>(b_it->second);
-
-        ApplyTaskbarGeometry(isActive, radius, marginX, bottomMargin);
-      }
-      result->Success(flutter::EncodableValue(true));
-      return;
-    }
-    result->NotImplemented();
-  });
-
-  SetChildContent(flutter_controller_->view()->GetNativeWindow());
-  flutter_controller_->engine()->SetNextFrameCallback([&]() { this->Show(); });
-  flutter_controller_->ForceRedraw();
-  return true;
-}
-
-void FlutterWindow::OnDestroy() {
-  ApplyTaskbarGeometry(false, 0, 0, 0);
-  if (flutter_controller_) flutter_controller_ = nullptr;
-  Win32Window::OnDestroy();
-}
-
-LRESULT FlutterWindow::MessageHandler(HWND hwnd, UINT const message, WPARAM const wparam, LPARAM const lparam) noexcept {
-  if (flutter_controller_) {
-    std::optional<LRESULT> result = flutter_controller_->HandleTopLevelWindowProc(hwnd, message, wparam, lparam);
-    if (result) return *result;
-  }
-  return Win32Window::MessageHandler(hwnd, message, wparam, lparam);
-}
+# Install the AOT library on non-Debug builds only.
+install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
+  CONFIGURATIONS Profile;Release
+  COMPONENT Runtime)
