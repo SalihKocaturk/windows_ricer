@@ -4,19 +4,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'dashboard_state.dart';
 
 class DashboardCubit extends Cubit<DashboardState> {
-  DashboardCubit() : super(const DashboardState()) {
-    platform.setMethodCallHandler((call) async {
-      if (call.method == 'onHotkeyPressed') {
-        toggleTheme();
-      }
-    });
-  }
+  DashboardCubit() : super(const DashboardState());
 
   static const platform = MethodChannel('winricer/window_manager');
 
-  Future<void> closeWindow() async => await platform.invokeMethod('closeApp');
-  Future<void> minimizeWindow() async =>
+  Future<void> closeWindow() async {
+    try {
+      await platform.invokeMethod('closeApp');
+    } catch (_) {}
+  }
+
+  Future<void> minimizeWindow() async {
+    try {
       await platform.invokeMethod('minimizeApp');
+    } catch (_) {}
+  }
 
   Future<void> _invoke() async {
     try {
@@ -35,14 +37,12 @@ class DashboardCubit extends Cubit<DashboardState> {
     await _invoke();
   }
 
-  void updateGapSize(double value) async {
+  void updateGapSize(double value) {
     emit(state.copyWith(gapSize: value));
-    if (state.isThemeActive) await _invoke();
   }
 
-  void updateBorderRadius(double value) async {
+  void updateBorderRadius(double value) {
     emit(state.copyWith(borderRadius: value));
-    if (state.isThemeActive) await _invoke();
   }
 
   void selectTheme(String theme) => emit(state.copyWith(selectedTheme: theme));
