@@ -22,7 +22,7 @@ bool FlutterWindow::OnCreate()
 
   HWND hWnd = GetHandle();
 
-  // Windows'un standart başlık çubuğunu kaldır (Frameless)
+  // Windows'un standart üst başlık çubuğunu kaldır (Frameless)
   LONG_PTR style = GetWindowLongPtr(hWnd, GWL_STYLE);
   style &= ~WS_CAPTION;
   SetWindowLongPtr(hWnd, GWL_STYLE, style);
@@ -39,16 +39,40 @@ bool FlutterWindow::OnCreate()
 
   channel->SetMethodCallHandler([hWnd](const flutter::MethodCall<> &call, std::unique_ptr<flutter::MethodResult<>> result)
                                 {
+    // 1. Kapatma
     if (call.method_name() == "closeApp") {
       PostMessage(hWnd, WM_CLOSE, 0, 0);
       result->Success();
       return;
     }
+    
+    // 2. Simge durumuna küçültme (Sarı buton)
     if (call.method_name() == "minimizeApp") {
       ShowWindow(hWnd, SW_MINIMIZE);
       result->Success();
       return;
     }
+
+    // 3. Cubit'ten gelen updateWindows çağrısı (Eksik olan kısım burasıydı)
+    if (call.method_name() == "updateWindows") {
+      const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
+      if (args) {
+        bool isActive = false;
+        auto active_it = args->find(flutter::EncodableValue("isActive"));
+        if (active_it != args->end() && std::holds_alternative<bool>(active_it->second)) {
+          isActive = std::get<bool>(active_it->second);
+          
+          // Görev çubuğunu aç / gizle
+          APPBARDATA abd = { sizeof(APPBARDATA), FindWindowW(L"Shell_TrayWnd", nullptr) };
+          abd.lParam = isActive ? ABS_AUTOHIDE : ABS_ALWAYSONTOP;
+          SHAppBarMessage(ABM_SETSTATE, &abd);
+        }
+      }
+      result->Success(flutter::EncodableValue(true));
+      return;
+    }
+
+    // 4. Görev çubuğu doğrudan toggle
     if (call.method_name() == "toggleTaskbar") {
       const auto* args = std::get_if<flutter::EncodableMap>(call.arguments());
       bool hide = true;
@@ -61,9 +85,10 @@ bool FlutterWindow::OnCreate()
       APPBARDATA abd = { sizeof(APPBARDATA), FindWindowW(L"Shell_TrayWnd", nullptr) };
       abd.lParam = hide ? ABS_AUTOHIDE : ABS_ALWAYSONTOP;
       SHAppBarMessage(ABM_SETSTATE, &abd);
-      result->Success();
+      result->Success(flutter::EncodableValue(true));
       return;
     }
+
     result->NotImplemented(); });
 
   SetChildContent(flutter_controller_->view()->GetNativeWindow());
