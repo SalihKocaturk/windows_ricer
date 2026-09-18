@@ -12,52 +12,37 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
   static const platform = MethodChannel('winricer/window_manager');
 
   bool _isActive = false;
-  int _glassType = 1; // 0: Şeffaf, 1: Buzlu Cam (Acrylic), 2: Bulanık (Blur)
-  double _opacity = 0.35;
-  bool _isIsland = true;
-  double _radius = 16.0;
-  double _margin = 40.0;
-  double _bottomMargin = 4.0;
+  double _height = 64.0; // Görev Çubuğu Boyuna Yükseklik (48 -> 64)
+  double _radius = 18.0; // Köşe Kavisi
+  double _margin = 60.0; // Sağdan/Soldan Boşluk
 
   void _sync({
     bool? active,
-    int? glass,
-    double? op,
-    bool? island,
-    double? rad,
-    double? mar,
-    double? bot,
+    double? height,
+    double? radius,
+    double? margin,
   }) async {
     final nActive = active ?? _isActive;
-    final nGlass = glass ?? _glassType;
-    final nOp = op ?? _opacity;
-    final nIsland = island ?? _isIsland;
-    final nRad = rad ?? _radius;
-    final nMar = mar ?? _margin;
-    final nBot = bot ?? _bottomMargin;
+    final nHeight = height ?? _height;
+    final nRadius = radius ?? _radius;
+    final nMargin = margin ?? _margin;
 
     setState(() {
       _isActive = nActive;
-      _glassType = nGlass;
-      _opacity = nOp;
-      _isIsland = nIsland;
-      _radius = nRad;
-      _margin = nMar;
-      _bottomMargin = nBot;
+      _height = nHeight;
+      _radius = nRadius;
+      _margin = nMargin;
     });
 
     try {
-      await platform.invokeMethod('updateTaskbarStyle', {
+      await platform.invokeMethod('applyTaskbarHook', {
         'isActive': nActive,
-        'glassType': nGlass,
-        'opacity': nOp,
-        'isIsland': nIsland,
-        'radius': nRad,
-        'margin': nMar,
-        'bottomMargin': nBot,
+        'height': nHeight,
+        'radius': nRadius,
+        'margin': nMargin,
       });
     } catch (e) {
-      print("Stil hatası: $e");
+      print("Kanca hatası: $e");
     }
   }
 
@@ -88,13 +73,13 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
               child: Row(
                 children: [
                   const Icon(
-                    Icons.blur_linear_rounded,
+                    Icons.tune_rounded,
                     color: Color(0xFF1DE9B6),
                     size: 20,
                   ),
                   const SizedBox(width: 8),
                   const Text(
-                    "WinRicer — Görev Çubuğu Cam & Ada Stüdyosu",
+                    "WinRicer — Dahili XAML Görev Çubuğu Motoru",
                     style: TextStyle(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -123,11 +108,11 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 24,
-                  vertical: 14,
+                  vertical: 16,
                 ),
                 child: Row(
                   children: [
-                    // Sol: Güç Butonu
+                    // Sol: Ana Açma/Kapama Butonu
                     Expanded(
                       flex: 4,
                       child: Container(
@@ -144,8 +129,8 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                               onTap: () => _sync(active: !_isActive),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
-                                width: 105,
-                                height: 105,
+                                width: 110,
+                                height: 110,
                                 decoration: BoxDecoration(
                                   shape: BoxShape.circle,
                                   color: _isActive
@@ -173,7 +158,7 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                                 ),
                                 child: Icon(
                                   Icons.power_settings_new_rounded,
-                                  size: 54,
+                                  size: 56,
                                   color: _isActive
                                       ? const Color(0xFF1DE9B6)
                                       : Colors.white30,
@@ -183,8 +168,8 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                             const SizedBox(height: 16),
                             Text(
                               _isActive
-                                  ? "CAM EFEKTİ: AKTİF"
-                                  : "CAM EFEKTİ: KAPALI",
+                                  ? "DAHİLİ KANCA: AKTİF"
+                                  : "DAHİLİ KANCA: KAPALI",
                               style: TextStyle(
                                 color: _isActive
                                     ? const Color(0xFF1DE9B6)
@@ -196,8 +181,8 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                             const SizedBox(height: 6),
                             Text(
                               _isActive
-                                  ? "Buzlu cam dokusu görev çubuğuna uygulandı."
-                                  : "Windows mat görev çubuğu devrede.",
+                                  ? "XAML yükseklik ve kavis kancası devrede."
+                                  : "Windows orijinal ayarları devrede.",
                               textAlign: TextAlign.center,
                               style: const TextStyle(
                                 color: Colors.white38,
@@ -210,233 +195,126 @@ class _RiceSuiteScreenState extends State<RiceSuiteScreen> {
                     ),
                     const SizedBox(width: 18),
 
-                    // Sağ: Ayarlar
+                    // Sağ: Yükseklik ve Kavis Ayarları
                     Expanded(
                       flex: 7,
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 20,
-                          vertical: 14,
+                          vertical: 16,
                         ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF122022),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: Colors.white10),
                         ),
-                        child: SingleChildScrollView(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                "CAM EFEKTİ TÜRÜ",
-                                style: TextStyle(
-                                  color: Color(0xFF1DE9B6),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: 1,
-                                ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Text(
+                              "GÖREV ÇUBUĞU BOYUT VE KAVİS AYARI",
+                              style: TextStyle(
+                                color: Color(0xFF1DE9B6),
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1,
                               ),
-                              const SizedBox(height: 10),
+                            ),
+                            const SizedBox(height: 20),
 
-                              Row(
-                                children: [
-                                  Expanded(
-                                    child: _GlassCard(
-                                      title: "Buzlu Cam",
-                                      sub: "Acrylic",
-                                      isSelected: _glassType == 1,
-                                      onTap: () => _sync(glass: 1),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _GlassCard(
-                                      title: "Şeffaf",
-                                      sub: "Clear",
-                                      isSelected: _glassType == 0,
-                                      onTap: () => _sync(glass: 0),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: _GlassCard(
-                                      title: "Bulanık",
-                                      sub: "Blur",
-                                      isSelected: _glassType == 2,
-                                      onTap: () => _sync(glass: 2),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 14),
-
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    "Cam Opaklığı (Koyuluk):",
-                                    style: TextStyle(
-                                      color: Colors.white70,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  Text(
-                                    "%${(_opacity * 100).toInt()}",
-                                    style: const TextStyle(
-                                      color: Color(0xFF1DE9B6),
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Slider(
-                                value: _opacity,
-                                min: 0.0,
-                                max: 0.8,
-                                activeColor: const Color(0xFF1DE9B6),
-                                onChanged: (v) => _sync(op: v),
-                              ),
-
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                dense: true,
-                                title: const Text(
-                                  "Kavisli Ada Şekli (Rounded Island)",
+                            // Yükseklik (Height) Slider
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Bar Yüksekliği (Height):",
                                   style: TextStyle(
-                                    color: Colors.white,
+                                    color: Colors.white70,
                                     fontSize: 12,
-                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                                subtitle: const Text(
-                                  "Kapalıyken tam ekran şeffaf cam olur.",
-                                  style: TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 10,
+                                Text(
+                                  "${_height.toInt()} px",
+                                  style: const TextStyle(
+                                    color: Color(0xFF1DE9B6),
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                ),
-                                value: _isIsland,
-                                activeThumbColor: const Color(0xFF1DE9B6),
-                                onChanged: (v) => _sync(island: v),
-                              ),
-
-                              if (_isIsland) ...[
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      "Köşe Kavisi:",
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      "${_radius.toInt()} px",
-                                      style: const TextStyle(
-                                        color: Color(0xFF1DE9B6),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Slider(
-                                  value: _radius,
-                                  min: 4,
-                                  max: 24,
-                                  activeColor: const Color(0xFF1DE9B6),
-                                  onChanged: (v) => _sync(rad: v),
-                                ),
-
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    const Text(
-                                      "Kenar Boşluğu (Margin):",
-                                      style: TextStyle(
-                                        color: Colors.white70,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                    Text(
-                                      "${_margin.toInt()} px",
-                                      style: const TextStyle(
-                                        color: Color(0xFF1DE9B6),
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                Slider(
-                                  value: _margin,
-                                  min: 0,
-                                  max: 120,
-                                  activeColor: const Color(0xFF1DE9B6),
-                                  onChanged: (v) => _sync(mar: v),
                                 ),
                               ],
-                            ],
-                          ),
+                            ),
+                            Slider(
+                              value: _height,
+                              min: 48,
+                              max: 84,
+                              activeColor: const Color(0xFF1DE9B6),
+                              onChanged: (v) => _sync(height: v),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Köşe Kavisi (Radius) Slider
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Köşe Kavisi (Radius):",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  "${_radius.toInt()} px",
+                                  style: const TextStyle(
+                                    color: Color(0xFF1DE9B6),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Slider(
+                              value: _radius,
+                              min: 4,
+                              max: 32,
+                              activeColor: const Color(0xFF1DE9B6),
+                              onChanged: (v) => _sync(radius: v),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Kenar Boşluğu (Margin) Slider
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text(
+                                  "Kenar Boşluğu (Margin):",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                Text(
+                                  "${_margin.toInt()} px",
+                                  style: const TextStyle(
+                                    color: Color(0xFF1DE9B6),
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Slider(
+                              value: _margin,
+                              min: 0,
+                              max: 160,
+                              activeColor: const Color(0xFF1DE9B6),
+                              onChanged: (v) => _sync(margin: v),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _GlassCard extends StatelessWidget {
-  final String title;
-  final String sub;
-  final bool isSelected;
-  final VoidCallback onTap;
-  const _GlassCard({
-    required this.title,
-    required this.sub,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 140),
-        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF1DE9B6).withValues(alpha: 0.2)
-              : Colors.black26,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: isSelected ? const Color(0xFF1DE9B6) : Colors.white12,
-            width: 1.2,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: isSelected ? const Color(0xFF1DE9B6) : Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 11,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              sub,
-              style: const TextStyle(color: Colors.white38, fontSize: 9),
             ),
           ],
         ),

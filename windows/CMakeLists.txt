@@ -106,3 +106,9 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 install(FILES "${AOT_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_DATA_DIR}"
   CONFIGURATIONS Profile;Release
   COMPONENT Runtime)
+# WinRicer Dahili Görev Çubuğu Kanca DLL'i
+add_library(taskbar_hook SHARED
+  "runner/taskbar_hook.cpp"
+  "runner/taskbar_hook.h"
+)
+target_link_libraries(taskbar_hook PRIVATE dwmapi user32 gdi32)
